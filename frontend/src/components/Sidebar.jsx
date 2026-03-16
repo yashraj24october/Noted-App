@@ -1,8 +1,10 @@
 import React from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useNotes } from '../context/NotesContext.jsx'
+import { useNotebooks } from '../context/NotebooksContext.jsx'
 import Tooltip from './Tooltip.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
+import AppStatsWidget from './AppStatsWidget.jsx'
 import toast from 'react-hot-toast'
 
 const NAV_ITEMS = [
@@ -13,9 +15,10 @@ const NAV_ITEMS = [
   { id: 'trash',     icon: '◻', label: 'Trash' },
 ]
 
-export default function Sidebar({ activeView, setActiveView, isOpen }) {
-  const { user, logout }                                     = useAuth()
-  const { stats, tags, filters, setFilters, fetchNotes }     = useNotes()
+export default function Sidebar({ activeView, setActiveView, isOpen, onOpenNotebook }) {
+  const { user, logout }                                 = useAuth()
+  const { stats, tags, filters, setFilters, fetchNotes } = useNotes()
+  const { notebooks }                                    = useNotebooks()
 
   const getCount = (view) => {
     if (!stats) return null
@@ -127,6 +130,35 @@ export default function Sidebar({ activeView, setActiveView, isOpen }) {
           })}
         </div>
 
+        {/* Notebooks */}
+        {notebooks.length > 0 && (
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', padding: '0 10px', marginBottom: 6 }}>
+              Notebooks
+            </p>
+            {notebooks.slice(0, 6).map(nb => (
+              <button
+                key={nb._id}
+                onClick={() => onOpenNotebook?.(nb)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  fontSize: 13, textAlign: 'left', background: 'transparent',
+                  color: 'rgba(255,255,255,0.6)', transition: 'all 0.18s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'translateX(3px)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.transform = 'translateX(0)' }}
+              >
+                <span style={{ fontSize: 15 }}>{nb.emoji}</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nb.name}</span>
+                <span style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)', padding: '1px 6px', borderRadius: 20 }}>
+                  {nb.noteCount || 0}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Subjects */}
         {stats?.bySubject?.length > 0 && (
           <div>
@@ -185,6 +217,9 @@ export default function Sidebar({ activeView, setActiveView, isOpen }) {
           </div>
         )}
       </nav>
+
+      {/* ── App Stats Widget ── */}
+      <AppStatsWidget />
 
       {/* ── User footer ── */}
       <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 10 }}>

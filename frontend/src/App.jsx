@@ -2,7 +2,8 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
-import { NotesProvider } from './context/NotesContext.jsx'
+import { NotesProvider }     from './context/NotesContext.jsx'
+import { NotebooksProvider } from './context/NotebooksContext.jsx'
 import { ThemeProvider, useTheme } from './context/ThemeContext.jsx'
 import AuthPage from './pages/AuthPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
@@ -27,6 +28,13 @@ function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <Loader />
   return user ? children : <Navigate to="/auth" replace />
+}
+
+// Redirects already-logged-in users away from /auth → homepage
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <Loader />
+  return user ? <Navigate to="/" replace /> : children
 }
 
 function ToastConfig() {
@@ -60,12 +68,18 @@ export default function App() {
             {/* Public shared note — no auth required */}
             <Route path="/share/:token" element={<SharedNotePage />} />
 
-            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth" element={
+              <PublicRoute>
+                <AuthPage />
+              </PublicRoute>
+            } />
 
             <Route path="/*" element={
               <PrivateRoute>
                 <NotesProvider>
-                  <DashboardPage />
+                  <NotebooksProvider>
+                    <DashboardPage />
+                  </NotebooksProvider>
                 </NotesProvider>
               </PrivateRoute>
             } />

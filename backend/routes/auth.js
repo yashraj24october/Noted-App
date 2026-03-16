@@ -3,7 +3,7 @@ const router    = express.Router();
 const jwt       = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User      = require('../models/User');
-const { protect } = require('../middleware/auth.middleware.js');
+const { protect } = require('../middleware/auth');
 
 // ─── Cookie helpers ───────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ const setTokenCookies = (res, accessToken, refreshToken) => {
     httpOnly: true,
     secure,
     sameSite,
-    maxAge: 7 * 24 * 60 * 60 * 1000,          // 7 days
+    maxAge: 15 * 60 * 1000,          // 15 minutes
     path:   '/',
   });
 
@@ -68,12 +68,13 @@ const generateRefreshToken = (userId) =>
 // ─── Safe user response object ────────────────────────────────────────────────
 
 const safeUser = (user) => ({
-  id:          user._id,
-  name:        user.name,
-  email:       user.email,
-  avatar:      user.avatar,
-  preferences: user.preferences,
-  stats:       user.stats,
+  id:                  user._id,
+  name:                user.name,
+  email:               user.email,
+  avatar:              user.avatar,
+  preferences:         user.preferences,
+  stats:               user.stats,
+  mustChangePassword:  user.mustChangePassword || false,
 });
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
@@ -223,10 +224,21 @@ router.post('/refresh', async (req, res) => {
 
 /**
  * GET /api/auth/me
- * Protected — return the current user
+ * Protected — return current user + silently update lastActive
  */
-router.get('/me', protect, (req, res) => {
-  return res.json({ success: true, user: safeUser(req.user) });
+router.get('/me', protect, async (req, res) => {
+  try {
+    // Update lastActive so "active today" stats are accurate
+    // Only write if it's been more than 5 minutes since last update (avoid hammering DB)
+    const user = req.user
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000)
+    if (!user.stats?.lastActive || user.stats.lastActive < fiveMinAgo) {
+      await User.findByIdAndUpdate(user._id, { 'stats.lastActive': new Date() })
+    }
+    return res.json({ success: true, user: safeUser(user) })
+  } catch (_) {
+    return res.json({ success: true, user: safeUser(req.user) })
+  }
 });
 
 /**
@@ -265,13 +277,14 @@ router.post('/change-password', protect, [
       return res.status(400).json({ success: false, message: 'New password must be different from your current password' });
     }
 
-    user.password = newPassword; // pre-save hook hashes it
-    await user.save();
+    user.password           = newPassword  // pre-save hook hashes it
+    user.mustChangePassword = false         // clear the forced-change flag
+    await user.save()
 
-    // Re-issue fresh tokens so the user stays logged in
-    setTokenCookies(res, generateAccessToken(user._id), generateRefreshToken(user._id));
+    // Re-issue fresh tokens so user stays logged in with updated state
+    setTokenCookies(res, generateAccessToken(user._id), generateRefreshToken(user._id))
 
-    return res.json({ success: true, message: 'Password changed successfully' });
+    return res.json({ success: true, message: 'Password changed successfully' })
   } catch (err) {
     console.error('Change password error:', err.message);
     return res.status(500).json({ success: false, message: 'Failed to change password' });

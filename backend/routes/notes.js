@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Note = require('../models/Note');
 const User = require('../models/User');
-const { protect } = require('../middleware/auth.middleware.js');
+const { protect } = require('../middleware/auth');
 
 // All routes protected
 router.use(protect);
@@ -31,7 +31,15 @@ router.get('/', async (req, res) => {
     if (priority) query.priority = priority;
 
     if (search) {
-      query.$text = { $search: search };
+      // $regex gives character-by-character search (partial match)
+      // $text requires full words — we switch to regex for better UX
+      const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      query.$or = [
+        { title:   rx },
+        { content: rx },
+        { subject: rx },
+        { tags:    rx },
+      ]
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);

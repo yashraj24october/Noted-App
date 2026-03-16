@@ -24,19 +24,52 @@ const PRIORITY_CFG = {
 }
 
 function MarkdownContent({ content }) {
-  const html = (content || '')
-    .replace(/^### (.+)$/gm, '<h3 style="font-size:16px;font-weight:600;margin:18px 0 8px;color:var(--text-primary)">$1</h3>')
-    .replace(/^## (.+)$/gm,  '<h2 style="font-size:20px;font-weight:600;margin:22px 0 10px;color:var(--text-primary)">$1</h2>')
-    .replace(/^# (.+)$/gm,   '<h1 style="font-family:\'Instrument Serif\',serif;font-size:26px;font-style:italic;margin:24px 0 12px;color:var(--text-primary)">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong style="font-weight:600;color:var(--text-primary)">$1</strong>')
-    .replace(/\*(.+?)\*/g,   '<em style="color:var(--text-secondary);font-style:italic">$1</em>')
-    .replace(/`(.+?)`/g,     '<code style="background:var(--bg-input);padding:2px 7px;border-radius:5px;font-family:\'DM Mono\',monospace;font-size:13px;color:var(--accent);border:1px solid var(--border-soft)">$1</code>')
-    .replace(/^- (.+)$/gm,   '<li style="margin:5px 0;color:var(--text-secondary);margin-left:20px;list-style:disc">$1</li>')
-    .replace(/^\d+\. (.+)$/gm,'<li style="margin:5px 0;color:var(--text-secondary);margin-left:20px;list-style:decimal">$1</li>')
-    .replace(/^> (.+)$/gm,   '<blockquote style="border-left:3px solid var(--accent);padding:4px 0 4px 14px;margin:12px 0;color:var(--text-secondary);font-style:italic;background:var(--accent-light);border-radius:0 6px 6px 0">$1</blockquote>')
-    .replace(/^---$/gm,      '<hr style="border:none;border-top:1px solid var(--border-soft);margin:20px 0">')
-    .replace(/\n\n/g,'<br/><br/>').replace(/\n/g,'<br/>')
-  return <div style={{fontSize:15,lineHeight:1.9,color:'var(--text-primary)',fontFamily:"'DM Sans',sans-serif"}} dangerouslySetInnerHTML={{__html:html}}/>
+  // Split on image tags first so we can render them as real <img> elements
+  const IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]*)\})?/g
+  const parts = []
+  let lastIndex = 0, m
+  while ((m = IMAGE_RE.exec(content || '')) !== null) {
+    if (m.index > lastIndex) parts.push({ type: 'text', value: content.slice(lastIndex, m.index) })
+    const attrs = {}
+    ;(m[3] || '').split(',').forEach(p => { const [k,v] = p.split('='); if(k&&v) attrs[k.trim()]=v.trim() })
+    parts.push({ type: 'image', alt: m[1], src: m[2], align: attrs.align || 'center', width: attrs.width || '100%' })
+    lastIndex = m.index + m[0].length
+  }
+  if (lastIndex < (content||'').length) parts.push({ type: 'text', value: content.slice(lastIndex) })
+
+  const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' }
+
+  const renderText = (text) => {
+    const html = text
+      .replace(/^### (.+)$/gm, '<h3 style="font-size:16px;font-weight:600;margin:18px 0 8px;color:var(--text-primary)">$1</h3>')
+      .replace(/^## (.+)$/gm,  '<h2 style="font-size:20px;font-weight:600;margin:22px 0 10px;color:var(--text-primary)">$1</h2>')
+      .replace(/^# (.+)$/gm,   '<h1 style="font-family:\'Instrument Serif\',serif;font-size:26px;font-style:italic;margin:24px 0 12px;color:var(--text-primary)">$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong style="font-weight:600;color:var(--text-primary)">$1</strong>')
+      .replace(/\*(.+?)\*/g,   '<em style="color:var(--text-secondary);font-style:italic">$1</em>')
+      .replace(/`(.+?)`/g,     '<code style="background:var(--bg-input);padding:2px 7px;border-radius:5px;font-family:\'DM Mono\',monospace;font-size:13px;color:var(--accent);border:1px solid var(--border-soft)">$1</code>')
+      .replace(/^- (.+)$/gm,   '<li style="margin:5px 0;color:var(--text-secondary);margin-left:20px;list-style:disc">$1</li>')
+      .replace(/^\d+\. (.+)$/gm,'<li style="margin:5px 0;color:var(--text-secondary);margin-left:20px;list-style:decimal">$1</li>')
+      .replace(/^> (.+)$/gm,   '<blockquote style="border-left:3px solid var(--accent);padding:4px 0 4px 14px;margin:12px 0;color:var(--text-secondary);font-style:italic;background:var(--accent-light);border-radius:0 6px 6px 0">$1</blockquote>')
+      .replace(/^---$/gm,      '<hr style="border:none;border-top:1px solid var(--border-soft);margin:20px 0">')
+      .replace(/\n\n/g,'<br/><br/>').replace(/\n/g,'<br/>')
+    return <div key={Math.random()} style={{fontSize:15,lineHeight:1.9,color:'var(--text-primary)',fontFamily:"'DM Sans',sans-serif"}} dangerouslySetInnerHTML={{__html:html}}/>
+  }
+
+  return (
+    <div>
+      {parts.map((p, i) =>
+        p.type === 'image' ? (
+          <div key={i} style={{ display:'flex', justifyContent: justifyMap[p.align]||'center', margin:'14px 0' }}>
+            <img
+              src={p.src}
+              alt={p.alt}
+              style={{ width: p.width, maxWidth:'100%', height:'auto', borderRadius:8, boxShadow:'0 2px 12px rgba(0,0,0,0.1)', display:'block' }}
+            />
+          </div>
+        ) : renderText(p.value)
+      )}
+    </div>
+  )
 }
 
 /* ── Main NoteViewPage ── */
@@ -96,7 +129,7 @@ export default function NoteViewPage({ note, onClose, onEditNote, onShareNote, o
       <div className={panelCls} style={{ background: bg, boxShadow: 'var(--shadow-modal)' }}>
 
         {/* ── Topbar ── */}
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 20px',flexWrap:'wrap',rowGap:'.5rem',borderBottom:'1px solid var(--border-soft)',background:bg,flexShrink:0 }}>
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 20px',borderBottom:'1px solid var(--border-soft)',background:bg,flexShrink:0 }}>
 
           {/* Left */}
           <div style={{ display:'flex',alignItems:'center',gap:10 }}>

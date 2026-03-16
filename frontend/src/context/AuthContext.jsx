@@ -104,7 +104,8 @@ export function AuthProvider({ children }) {
 
   const changePassword = async (currentPassword, newPassword) => {
     const res = await axios.post('/auth/change-password', { currentPassword, newPassword })
-    // Server re-issues tokens so user stays logged in after password change
+    // Refresh user state so mustChangePassword clears
+    setUser(prev => prev ? { ...prev, mustChangePassword: false } : null)
     return res.data
   }
 
@@ -115,6 +116,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, loading,
       login, register, logout, changePassword, updateUser,
+      mustChangePassword: user?.mustChangePassword || false,
     }}>
       {children}
     </AuthContext.Provider>

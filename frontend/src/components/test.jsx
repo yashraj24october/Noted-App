@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNotes }     from '../context/NotesContext.jsx'
-import { useNotebooks } from '../context/NotebooksContext.jsx'
+import { useNotes } from '../context/NotesContext.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import NotesGrid from '../components/NotesGrid.jsx'
 import NoteEditor from '../components/NoteEditor.jsx'
 import NoteViewPage from '../components/NoteViewPage.jsx'
 import ShareModal from '../components/ShareModal.jsx'
 import StatsPanel from '../components/StatsPanel.jsx'
-import NotebooksPanel from '../components/NotebooksPanel.jsx'
 import Tooltip from '../components/Tooltip.jsx'
 
 const VIEW_PARAMS = {
@@ -26,10 +24,8 @@ export default function DashboardPage() {
   const [sharingNote, setSharingNote] = useState(null)  // for standalone ShareModal
   const [viewMode,    setViewMode]    = useState('grid')
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024)
-  const [sidebarNotebook, setSidebarNotebook] = useState(null)
 
   const { fetchNotes, fetchStats, fetchTags, setFilters, filters } = useNotes()
-  const { fetchNotebooks } = useNotebooks()
 
   useEffect(() => {
     fetchStats(); fetchTags(); fetchNotes(VIEW_PARAMS.all)
@@ -59,11 +55,10 @@ export default function DashboardPage() {
     fetchNotes(params); fetchStats(); fetchTags()
   }, [activeView, fetchNotes, fetchStats, fetchTags])
 
-  const handleSearch = useCallback((search) => {
+  const handleSearch = useCallback(search => {
     setFilters(f => ({ ...f, search }))
     fetchNotes({ search })
-    fetchNotebooks(search)   // search notebooks simultaneously
-  }, [fetchNotes, setFilters, fetchNotebooks])
+  }, [fetchNotes, setFilters])
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-page)' }}>
@@ -76,12 +71,7 @@ export default function DashboardPage() {
         />
       )}
 
-      <Sidebar
-        activeView={activeView}
-        setActiveView={handleViewChange}
-        isOpen={sidebarOpen}
-        onOpenNotebook={nb => setSidebarNotebook(nb)}
-      />
+      <Sidebar activeView={activeView} setActiveView={handleViewChange} isOpen={sidebarOpen} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
 
@@ -141,16 +131,7 @@ export default function DashboardPage() {
           key={activeView}
           style={{ flex:1, overflowY:'auto', padding:'20px 24px', animation: 'fadeInUp 0.28s cubic-bezier(0.25,0.46,0.45,0.94) both' }}
         >
-          {activeView === 'all' && (
-            <>
-              <StatsPanel />
-              <NotebooksPanel
-                onViewNote={openView}
-                onEditNote={openEdit}
-                onRefresh={refreshAll}
-              />
-            </>
-          )}
+          {activeView === 'all' && <StatsPanel />}
           <NotesGrid
             activeView={activeView}
             viewMode={viewMode}
@@ -177,27 +158,17 @@ export default function DashboardPage() {
         <NoteEditor note={editingNote} onClose={closeEditor} onSaved={refreshAll} />
       )}
 
-      {/* ── Standalone Share Modal ── */}
+      {/* ── Standalone Share Modal — rendered independently, no NoteViewPage needed ── */}
       {sharingNote && (
         <ShareModal
           note={sharingNote}
           onClose={() => { setSharingNote(null); refreshAll() }}
           onUpdate={updatedNote => {
             setSharingNote(updatedNote)
+            // Also update the viewing note if it's the same one
             if (viewingNote?._id === updatedNote._id) setViewingNote(updatedNote)
             refreshAll()
           }}
-        />
-      )}
-
-      {/* ── Notebook opened from sidebar ── */}
-      {sidebarNotebook && (
-        <NotebooksPanel
-          initialOpen={sidebarNotebook}
-          onViewNote={note => { setSidebarNotebook(null); openView(note) }}
-          onEditNote={note => { setSidebarNotebook(null); openEdit(note) }}
-          onRefresh={refreshAll}
-          onClose={() => setSidebarNotebook(null)}
         />
       )}
     </div>

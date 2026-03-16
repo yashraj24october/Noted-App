@@ -23,7 +23,8 @@ const userSchema = new mongoose.Schema({
     select:    false, // never returned in queries by default
   },
   avatar:     { type: String, default: '' },
-  status:     { type: Number, default: 1 }, // 1 = active, 0 = deactivated
+  status:     { type: Number, default: 1 },
+  mustChangePassword: { type: Boolean, default: false }, // set true after admin reset
   preferences: {
     theme:       { type: String, enum: ['dark', 'light'], default: 'light' },
     defaultView: { type: String, enum: ['grid', 'list'],  default: 'grid'  },

@@ -91,7 +91,13 @@ const noteSchema = new mongoose.Schema({
   sharedAt: {
     type: Date,
     default: null
-  }
+  },
+  // References to notebooks this note belongs to (many-to-many)
+  notebooks: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Notebook',
+    default: [],
+  }],
 }, { timestamps: true });
 
 // Index for search
