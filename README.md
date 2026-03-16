@@ -327,44 +327,6 @@ noted-app/
 
 ---
 
-## 🖥️ Deployment
-
-Full step-by-step deployment guide is in **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
-
-### Quick overview (Ubuntu 22.04 VPS)
-
-```bash
-# 1. Install Node.js 20 + MongoDB + PM2 + Nginx
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs mongodb-org nginx
-sudo npm install -g pm2
-
-# 2. Clone and build
-git clone https://github.com/YOUR_USERNAME/noted-app.git
-cd noted-app
-npm run install-all
-npm run build          # builds frontend/dist/
-
-# 3. Configure .env and start
-pm2 start backend/server.js --name "noted-app"
-pm2 save && pm2 startup
-
-# 4. Nginx + SSL
-sudo certbot --nginx -d yourdomain.com
-```
-
-**In production, Express serves the React build directly** — no separate frontend server needed.
-
-### Recommended stack
-
-| Service | Provider | Cost |
-|---------|----------|------|
-| VPS | DigitalOcean / Hostinger | $6/mo · ₹300/mo |
-| Domain | Namecheap / BigRock | ~$10/yr · ₹800/yr |
-| SSL | Let's Encrypt (via Certbot) | **Free** |
-| Database | MongoDB local on same VPS | **Free** |
-
----
 
 ## 🔐 Security Architecture
 
